@@ -18,7 +18,7 @@ jobs:
       - name: Install Dependencies
         if: steps.cache-nodemodules.outputs.cache-hit != 'true'
         run: |
-          npm ci --force
+          npm install --force
 
       - name: OWASP Dependency Check
         run: |
