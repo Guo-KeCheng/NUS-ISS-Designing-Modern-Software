@@ -1,6 +1,11 @@
 pipeline {
     agent any
 
+    environment {
+        NETLIFY_SITE_ID = 
+        NETLIFY_AUTH_TOKEN = credentials()
+    }
+
     stages {
         stage('Build') {
             agent {
@@ -10,6 +15,7 @@ pipeline {
                 }
             }
             steps {
+                echo "Building the frontend..."
                 sh '''
                     ls -la
                     node --version
@@ -50,6 +56,7 @@ pipeline {
                 sh '''
                     npm install netlify-cli
                     node_modules/.bin/netlify --version
+                    node_modules/.bin/netlify deploy --dir=build --prod
                 '''
             }
         }

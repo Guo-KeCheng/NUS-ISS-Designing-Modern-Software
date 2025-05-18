@@ -4,11 +4,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import com.nus_iss.spring.backend.constants.Roles;
+import com.nus_iss.spring.backend.dtos.BuyerSellerDto;
 import com.nus_iss.spring.backend.entities.User;
 import com.nus_iss.spring.backend.entities.UserInfoDetails;
+import com.nus_iss.spring.backend.factories.UserFactory;
 import com.nus_iss.spring.backend.repositories.UserRepository;
 
 import java.util.Optional;
@@ -20,7 +22,7 @@ public class UserInfoService implements UserDetailsService {
     private UserRepository userRepository;
 
     @Autowired
-    private PasswordEncoder encoder;
+    private UserFactory userFactory;  
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
@@ -31,10 +33,46 @@ public class UserInfoService implements UserDetailsService {
             .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
     }
 
-    public String addUser(User userInfo) {
-        // Encode password before saving the user
-        userInfo.setPassword(encoder.encode(userInfo.getPassword()));
-        userRepository.save(userInfo);
-        return "User Added Successfully";
+    public User findUserByUsername(String username) throws UsernameNotFoundException {
+        Optional<User> user = userRepository.findByUsername(username);
+    
+        return user.orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + username));
+    }
+    
+    public String addUser(BuyerSellerDto userInfo) throws Exception {
+        Optional<User> existingUser = userRepository.findByUsername(userInfo.getUsername());
+        
+        if (existingUser.isPresent()){
+            throw new Exception("Username " + userInfo.getUsername() + " already exists!");
+        }
+
+        User createdUser = userFactory.createUser(userInfo);
+        String createdUserRole = createdUser.getRole();
+
+        if (Roles.BUYER.equals(createdUserRole)) {
+            return "Buyer Added Successfully";
+        } else if (Roles.SELLER.equals(createdUserRole)) {
+            return "Seller Added Successfully";
+        } else {
+            return "Unknown Role Added Successfully";  
+        }
+    }
+
+    public void updateUserBalance(String username, Double amount, String operation){
+        User user = userRepository.findByUsername(username)
+            .orElseThrow(() -> new RuntimeException("User " + username + " does not exist!"));
+        if (operation == "SUBTRACT" && user.getBalance() < amount){
+            throw new RuntimeException("Balance is low!");
+        }
+
+        if (operation == "ADD"){
+            user.setBalance(user.getBalance() + amount);
+        } else if (operation == "SUBTRACT"){
+            user.setBalance(user.getBalance() - amount);
+        } else{
+            throw new IllegalArgumentException("Wrong operation!");
+        }
+
+        userRepository.save(user);
     }
 }
